@@ -7,9 +7,13 @@
     "dev": "nodemon src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test:flow": "ts-node src/scripts/testFlow.ts"
+    "test:flow": "ts-node src/scripts/testFlow.ts",
+    "seed": "ts-node src/scripts/seedRealistic.ts",
+    "seed:admin": "ts-node src/scripts/seedAdmin.ts",
+    "seed:comprehensive": "ts-node src/scripts/seedComprehensive.ts"
   },
   "dependencies": {
+    "@types/multer": "^2.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -18,6 +22,7 @@
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.3",
+    "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "resend": "^2.0.0",
     "socket.io": "^4.7.2"

@@ -6,4 +6,5 @@ export * from './finance.model';
 export * from './notification.model';
 export * from './training.model';
 export * from './settings.model';
+export * from './product.model';
 

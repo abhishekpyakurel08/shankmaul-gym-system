@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Income, Expense, Member, Subscription, Attendance } from '../models';
+import { Income, Expense, Member, Subscription, Attendance, Product } from '../models';
 
 export const getDashboardStats = async (req: Request, res: Response) => {
     try {
@@ -36,6 +36,15 @@ export const getDashboardStats = async (req: Request, res: Response) => {
             { $group: { _id: '$category', total: { $sum: '$amount' } } }
         ]);
 
+        // 6. Inventory Stats
+        const lowStockCount = await Product.countDocuments({ stock: { $gt: 0, $lte: 10 }, isActive: true });
+        const outOfStockCount = await Product.countDocuments({ stock: 0, isActive: true });
+        const totalProducts = await Product.countDocuments({ isActive: true });
+        const todaySales = await Income.countDocuments({
+            category: 'merchandise',
+            date: { $gte: startOfDay }
+        });
+
         res.json({
             overview: {
                 totalMembers,
@@ -49,6 +58,12 @@ export const getDashboardStats = async (req: Request, res: Response) => {
                 monthlyExpense,
                 monthlyProfit,
                 revenueByCategory: lifetimeIncomes,
+            },
+            inventory: {
+                lowStockCount,
+                outOfStockCount,
+                totalProducts,
+                todaySales
             }
         });
     } catch (error) {

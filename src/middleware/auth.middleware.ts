@@ -36,3 +36,6 @@ export const authorize = (roles: string[]) => {
         next();
     };
 };
+
+// Export authenticate as an alias for auth
+export const authenticate = auth;

@@ -32,6 +32,9 @@ app.use(helmet());
 app.use(cors({ origin: '*' })); // Allow all origins for Express
 app.use(express.json());
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
+
 // Routes
 app.use('/api', routes);
 

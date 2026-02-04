@@ -23,6 +23,7 @@ export interface IMember {
     emergencyContact?: string;
     dateOfBirth?: Date;
     gender?: 'male' | 'female' | 'other';
+    avatar?: string; // URL to avatar image (DiceBear or uploaded)
 }
 
 export interface ISubscription {
@@ -118,4 +119,18 @@ export interface ITrainingMember {
 export interface IQRTokenPayload {
     memberId: string;
     type: 'CHECKIN';
+}
+
+export interface IProduct {
+    _id?: string;
+    name: string;
+    description?: string;
+    category: 'supplements' | 'gear' | 'apparel' | 'drinks' | 'other';
+    price: number;
+    costPrice?: number;
+    stock: number;
+    sku?: string;
+    brand?: string;
+    image?: string;
+    isActive: boolean;
 }
