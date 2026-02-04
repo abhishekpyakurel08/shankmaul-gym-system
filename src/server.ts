@@ -29,7 +29,9 @@ app.set('io', io);
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: '*' })); // Allow all origins for Express
+app.use(cors({ origin: process.env.FRONTEND_URL,
+credentials: true
+ })); // Allow all origins for Express
 app.use(express.json());
 
 // Serve static files from uploads directory
