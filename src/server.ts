@@ -15,10 +15,24 @@ import { autoCheckOut } from './services/attendance.service';
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://qs4scscosw8ksc8coc4wsg80.tecobit.cloud',
+    'https://po4g0sw0s8sgc8s4wsc4kw44.tecobit.cloud'
+];
+
 // Setup Socket.IO
 export const io = new Server(server, {
     cors: {
-        origin: "*",  // Allow all origins for debugging
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.tecobit.cloud')) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         credentials: true
     }
@@ -29,9 +43,26 @@ app.set('io', io);
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.FRONTEND_URL,
-credentials: true
- })); // Allow all origins for Express
+
+// Dynamic CORS configuration to handle multiple frontend deployments
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        const isAllowed = allowedOrigins.includes(origin) ||
+            origin.endsWith('.tecobit.cloud') ||
+            process.env.NODE_ENV === 'development';
+
+        if (isAllowed) {
+            callback(null, true);
+        } else {
+            console.warn(`CORS blocked for origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
 app.use(express.json());
 
 // Serve static files from uploads directory

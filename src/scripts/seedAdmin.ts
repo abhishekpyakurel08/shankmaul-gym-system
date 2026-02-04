@@ -10,80 +10,57 @@ const seedTactical = async () => {
         await mongoose.connect(MONGODB_URI);
         console.log('📡 Connected to Tactical Database');
 
-        // 1. Seed Admin
-        const adminEmail = 'admin@shankhamul.com';
-        const adminPassword = 'admin123';
+        const usersToSeed = [
+            { email: 'admin@shankhamul.com', password: 'admin123', role: 'admin', firstName: 'System', lastName: 'Admin' },
+            { email: 'admin2@shankhamul.com', password: 'admin123', role: 'admin', firstName: 'Second', lastName: 'Admin' },
+            { email: 'staff@shankhamul.com', password: 'staff123', role: 'staff', firstName: 'Reception', lastName: 'Staff' },
+            { email: 'staff2@shankhamul.com', password: 'staff123', role: 'staff', firstName: 'Morning', lastName: 'Staff' },
+            { email: 'trainer@shankhamul.com', password: 'trainer123', role: 'trainer', firstName: 'Head', lastName: 'Trainer' },
+            { email: 'trainer2@shankhamul.com', password: 'trainer123', role: 'trainer', firstName: 'Fitness', lastName: 'Coach' },
+            { email: 'member@shankhamul.com', password: 'member123', role: 'member', firstName: 'Test', lastName: 'Member' },
+            { email: 'member1@shankhamul.com', password: 'password123', role: 'member', firstName: 'Active', lastName: 'User' },
+            { email: 'member2@shankhamul.com', password: 'password123', role: 'member', firstName: 'New', lastName: 'Member' },
+        ];
 
-        let admin = await User.findOne({ email: adminEmail });
-        if (!admin) {
-            admin = await User.create({
-                email: adminEmail,
-                password: adminPassword,
-                role: 'admin'
-            });
-            console.log(`✅ Admin Node Created: ${adminEmail}`);
-        } else {
-            console.log('ℹ️ Admin Node already exists');
+        console.log('👥 Seeding specific test accounts...');
+
+        for (const u of usersToSeed) {
+            let existingUser = await User.findOne({ email: u.email });
+            if (!existingUser) {
+                const newUser = await User.create({
+                    email: u.email,
+                    password: u.password,
+                    role: u.role
+                });
+
+                if (u.role === 'member') {
+                    await Member.create({
+                        user: newUser._id,
+                        firstName: u.firstName,
+                        lastName: u.lastName,
+                        phone: '+977 98' + Math.floor(10000000 + Math.random() * 90000000),
+                        status: 'active'
+                    });
+                }
+                console.log(`✅ Created ${u.role}: ${u.email}`);
+            } else {
+                console.log(`ℹ️ ${u.role} already exists: ${u.email}`);
+            }
         }
 
-        // 2. Seed Member Operative
-        const memberEmail = 'member@shankhamul.com';
-        const memberPassword = 'member123';
+        console.log('\n🚀 Tactical Seeding Complete');
+        console.log('\n🔑 ACCESS CREDENTIALS TABLE:');
+        console.log('------------------------------------------------------------');
+        console.log('| ROLE     | EMAIL ID                   | PASSWORD    |');
+        console.log('------------------------------------------------------------');
+        usersToSeed.forEach(u => {
+            const roleStr = u.role.padEnd(8);
+            const emailStr = u.email.padEnd(26);
+            const passStr = u.password.padEnd(11);
+            console.log(`| ${roleStr} | ${emailStr} | ${passStr} |`);
+        });
+        console.log('------------------------------------------------------------\n');
 
-        let memberUser = await User.findOne({ email: memberEmail });
-        if (!memberUser) {
-            memberUser = await User.create({
-                email: memberEmail,
-                password: memberPassword,
-                role: 'member'
-            });
-
-            await Member.create({
-                user: memberUser._id,
-                firstName: 'Test',
-                lastName: 'Operative',
-                email: memberEmail,
-                phone: '+977 9800000000',
-                status: 'active'
-            });
-            console.log(`✅ Member Operative Created: ${memberEmail}`);
-        } else {
-            console.log('ℹ️ Member Operative already exists');
-        }
-
-        // 3. Seed Staff Support
-        const staffEmail = 'staff@shankhamul.com';
-        const staffPassword = 'staff123';
-
-        let staffUser = await User.findOne({ email: staffEmail });
-        if (!staffUser) {
-            await User.create({
-                email: staffEmail,
-                password: staffPassword,
-                role: 'staff'
-            });
-            console.log(`✅ Staff Support Created: ${staffEmail}`);
-        } else {
-            console.log('ℹ️ Staff Support already exists');
-        }
-
-        // 4. Seed Trainer Unit
-        const trainerEmail = 'trainer@shankhamul.com';
-        const trainerPassword = 'trainer123';
-
-        let trainerUser = await User.findOne({ email: trainerEmail });
-        if (!trainerUser) {
-            await User.create({
-                email: trainerEmail,
-                password: trainerPassword,
-                role: 'trainer'
-            });
-            console.log(`✅ Trainer Unit Created: ${trainerEmail}`);
-        } else {
-            console.log('ℹ️ Trainer Unit already exists');
-        }
-
-        console.log('🚀 Tactical Seeding Complete');
         process.exit(0);
     } catch (error) {
         console.error('❌ Strategic Seeding Failed:', error);
