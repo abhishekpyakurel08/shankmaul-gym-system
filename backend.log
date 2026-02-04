@@ -1,0 +1,39 @@
+
+> gym-express-backend@1.0.0 dev
+> nodemon src/server.ts
+
+[33m[nodemon] 3.1.11[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting child process[39m
+
+  #  Node.js[1876640]: void node::ResetStdio() at ../src/node.cc:751
+  #  Assertion failed: !(err != 0) || (err == -1 && (*__errno_location ()) == 1)
+
+----- Native stack trace -----
+
+ 1: 0xcb3007 node::Assert(node::AssertionInfo const&) [node]
+ 2: 0xc5f924  [node]
+ 3: 0x7fc64ab5c291  [/lib/x86_64-linux-gnu/libc.so.6]
+ 4: 0x7fc64ab5c35a  [/lib/x86_64-linux-gnu/libc.so.6]
+ 5: 0xbbf62f node::DefaultProcessExitHandlerInternal(node::Environment*, node::ExitCode) [node]
+ 6: 0xc1ef0f node::Environment::Exit(node::ExitCode) [node]
+ 7: 0xf4e54f v8::internal::FunctionCallbackArguments::Call(v8::internal::CallHandlerInfo) [node]
+ 8: 0xf4edbd  [node]
+ 9: 0xf4f285 v8::internal::Builtin_HandleApiCall(int, unsigned long*, v8::internal::Isolate*) [node]
+10: 0x1959df6  [node]
+
+  #  Node.js[1876640]: void node::ResetStdio() at ../src/node.cc:751
+  #  Assertion failed: !(err != 0) || (err == -1 && (*__errno_location ()) == 1)
+
+----- Native stack trace -----
+
+ 1: 0xcb3007 node::Assert(node::AssertionInfo const&) [node]
+ 2: 0xc5f924  [node]
+ 3: 0xc5ff3d node::TrapWebAssemblyOrContinue(int, siginfo_t*, void*) [node]
+ 4: 0x7fc64ab59df0  [/lib/x86_64-linux-gnu/libc.so.6]
+ 5: 0x426db640 

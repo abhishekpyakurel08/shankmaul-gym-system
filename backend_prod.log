@@ -1,0 +1,8 @@
+
+> gym-express-backend@1.0.0 start
+> node dist/server.js
+
+Server running on port 5000
+MongoDB Connected
+[CRON] Subscription expiry notification job scheduled for 9:00 AM daily
+Killed
