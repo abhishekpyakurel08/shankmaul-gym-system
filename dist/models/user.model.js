@@ -52,6 +52,7 @@ const UserSchema = new mongoose_1.Schema({
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     password: { type: String, required: true },
     role: { type: String, enum: ['admin', 'staff', 'trainer', 'member'], default: 'member' },
+    qrLoginToken: { type: String, unique: true, sparse: true },
 }, { timestamps: true });
 // Hash password before saving
 UserSchema.pre('save', function (next) {

@@ -33,17 +33,20 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Attendance = void 0;
+exports.Settings = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-const AttendanceSchema = new mongoose_1.Schema({
-    member: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Member', required: true },
-    date: { type: Date, default: Date.now },
-    checkInTime: { type: Date, required: true },
-    checkOutTime: { type: Date },
-    method: { type: String, enum: ['qr', 'manual', 'auto'], required: true },
-    duration: { type: Number } // calculated in minutes
+const SettingsSchema = new mongoose_1.Schema({
+    gymName: { type: String, default: 'Shankhamul Physical Fitness' },
+    supportContact: { type: String, default: '+977 980-000000' },
+    address: { type: String, default: 'Shankhamul, Kathmandu, Nepal' },
+    darkMode: { type: Boolean, default: false },
+    verifyMembership: { type: Boolean, default: true },
+    cooldownPeriod: { type: Boolean, default: true },
+    notifications: {
+        expiryAlerts: { type: Boolean, default: true },
+        paymentReceipts: { type: Boolean, default: true },
+        marketingEmails: { type: Boolean, default: false }
+    },
+    updatedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
-// Ensure one check-in per day per member? The prompt says "No duplicate check-in today".
-// We can handle that in logic, but indexing might help.
-AttendanceSchema.index({ member: 1, date: 1 }); // Just an example, date logic is tricky because of timestamps.
-exports.Attendance = mongoose_1.default.model('Attendance', AttendanceSchema);
+exports.Settings = mongoose_1.default.model('Settings', SettingsSchema);

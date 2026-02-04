@@ -69,7 +69,7 @@ const getSummary = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 exports.getSummary = getSummary;
 const getIncomes = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const incomes = yield models_1.Income.find().sort({ date: -1 });
+        const incomes = yield models_1.Income.find().populate('memberId').sort({ date: -1 });
         res.json(incomes);
     }
     catch (error) {

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processManualCheckIn = exports.processQRCheckIn = void 0;
+exports.autoCheckOut = exports.processManualCheckIn = exports.processQRCheckIn = void 0;
 const models_1 = require("../models");
 const qrToken_1 = require("../utils/qrToken");
 const email_service_1 = require("./email.service");
@@ -55,17 +55,16 @@ const processQRCheckIn = (qrToken) => __awaiter(void 0, void 0, void 0, function
         // Return with a flag or different message
         return { attendance: populatedAttendance, type: 'checkout', subscription: activeSubscription };
     }
-    // If checked out and trying to scan again -> Normally we block or allow new session
-    // For simplicity, let's block second session today as per "No duplicate check-in today" rule
+    // If checked out and trying to scan again -> Enforce one-session-per-day limit
     if (existingAttendance && existingAttendance.checkOutTime) {
-        throw new Error('Session already completed for today');
+        throw new Error('Attendance protocol already completed for today. Only one session permitted.');
     }
     // 5. Record new check-in
     const newAttendance = yield models_1.Attendance.create({
         member: memberId,
         checkInTime: new Date(),
         method: 'qr',
-        date: new Date()
+        date: startOfDay // Use normalized date for easier querying
     });
     // Populate member for the response
     const populatedAttendance = yield models_1.Attendance.findById(newAttendance._id).populate('member');
@@ -78,26 +77,28 @@ const processQRCheckIn = (qrToken) => __awaiter(void 0, void 0, void 0, function
     return { attendance: populatedAttendance, type: 'checkin', subscription: activeSubscription };
 });
 exports.processQRCheckIn = processQRCheckIn;
-const processManualCheckIn = (memberId) => __awaiter(void 0, void 0, void 0, function* () {
+const processManualCheckIn = (memberId_1, ...args_1) => __awaiter(void 0, [memberId_1, ...args_1], void 0, function* (memberId, allowOverride = false, customDate) {
     // 1. Member exists & active
     const member = yield models_1.Member.findById(memberId).populate('user');
     if (!member)
         throw new Error('Member not found');
-    if (member.status !== 'active')
-        throw new Error('Member is not active');
-    // 2. Active subscription exists
+    // 2. Active subscription exists (unless overridden)
     const activeSubscription = yield models_1.Subscription.findOne({
         member: memberId,
         status: 'active',
         endDate: { $gte: new Date() }
     });
-    if (!activeSubscription) {
-        throw new Error('No active subscription found');
+    if (!activeSubscription && !allowOverride) {
+        throw new Error('No active subscription found. Access to facility denied.');
     }
-    // 3. Check for existing attendance today (Toggle Logic)
-    const startOfDay = new Date();
+    if (member.status !== 'active' && !allowOverride) {
+        throw new Error('Member account is not active. Please see reception.');
+    }
+    // 3. Check for existing attendance on that date (Toggle Logic)
+    const targetDate = customDate || new Date();
+    const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
+    const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
     const existingAttendance = yield models_1.Attendance.findOne({
         member: memberId,
@@ -105,24 +106,44 @@ const processManualCheckIn = (memberId) => __awaiter(void 0, void 0, void 0, fun
     }).sort({ checkInTime: -1 });
     // If already checked in and hasn't checked out yet -> Check Out
     if (existingAttendance && !existingAttendance.checkOutTime) {
-        existingAttendance.checkOutTime = new Date();
+        existingAttendance.checkOutTime = customDate || new Date();
         const diff = existingAttendance.checkOutTime.getTime() - existingAttendance.checkInTime.getTime();
         existingAttendance.duration = Math.round(diff / 60000);
         yield existingAttendance.save();
         const populated = yield models_1.Attendance.findById(existingAttendance._id).populate('member');
         return { attendance: populated, type: 'checkout', subscription: activeSubscription };
     }
-    if (existingAttendance && existingAttendance.checkOutTime) {
-        throw new Error('Session already completed for today');
+    // If already checked out -> Enforce limit unless override is granted
+    if (existingAttendance && existingAttendance.checkOutTime && !allowOverride) {
+        throw new Error('Member has already completed a session today. Clear override required to re-entry.');
     }
     // 4. Record new check-in
     const newAttendance = yield models_1.Attendance.create({
         member: memberId,
-        checkInTime: new Date(),
+        checkInTime: customDate || new Date(),
         method: 'manual',
-        date: new Date()
+        date: startOfDay
     });
     const populated = yield models_1.Attendance.findById(newAttendance._id).populate('member');
     return { attendance: populated, type: 'checkin', subscription: activeSubscription };
 });
 exports.processManualCheckIn = processManualCheckIn;
+const autoCheckOut = () => __awaiter(void 0, void 0, void 0, function* () {
+    const ONE_HOUR_AGO = new Date(Date.now() - 60 * 60 * 1000);
+    // Find all active sessions where check-in was more than 1 hour ago
+    const activeSessions = yield models_1.Attendance.find({
+        checkOutTime: { $exists: false },
+        checkInTime: { $lt: ONE_HOUR_AGO }
+    }).populate('member');
+    console.log(`[AUTO-CHECKOUT] Processing ${activeSessions.length} sessions...`);
+    const results = [];
+    for (const session of activeSessions) {
+        session.checkOutTime = new Date(session.checkInTime.getTime() + 60 * 60 * 1000); // Set to exactly 1 hour after check-in for fairness
+        session.duration = 60; // 60 minutes
+        session.method = 'auto';
+        yield session.save();
+        results.push(session);
+    }
+    return results;
+});
+exports.autoCheckOut = autoCheckOut;

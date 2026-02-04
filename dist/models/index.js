@@ -21,3 +21,4 @@ __exportStar(require("./attendance.model"), exports);
 __exportStar(require("./finance.model"), exports);
 __exportStar(require("./notification.model"), exports);
 __exportStar(require("./training.model"), exports);
+__exportStar(require("./settings.model"), exports);

@@ -8,6 +8,7 @@ const router = (0, express_1.Router)();
 router.post('/register', auth_middleware_1.auth, (0, auth_middleware_1.authorize)(['admin', 'staff']), auth_controller_1.register);
 // Login is public
 router.post('/login', auth_controller_1.login);
+router.post('/qr-login', auth_controller_1.qrTokenLogin);
 // Admin only user management
 router.get('/users', auth_middleware_1.auth, (0, auth_middleware_1.authorize)(['admin']), auth_controller_1.getUsers);
 router.put('/users/:id/role', auth_middleware_1.auth, (0, auth_middleware_1.authorize)(['admin']), auth_controller_1.updateUserRole);

@@ -42,7 +42,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runScheduledNotifications = exports.sendExpiryNotifications = void 0;
+exports.runScheduledNotifications = exports.updateExpiredSubscriptions = exports.sendExpiryNotifications = void 0;
 const models_1 = require("../models");
 const emailService = __importStar(require("./email.service"));
 /**
@@ -114,6 +114,42 @@ const sendExpiryNotifications = (...args_1) => __awaiter(void 0, [...args_1], vo
 });
 exports.sendExpiryNotifications = sendExpiryNotifications;
 /**
+ * Scan for subscriptions that have passed their endDate and update status to 'expired'
+ */
+const updateExpiredSubscriptions = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const now = new Date();
+        // 1. Find all active subscriptions where endDate is in the past
+        const expiredSubs = yield models_1.Subscription.find({
+            status: 'active',
+            endDate: { $lt: now }
+        });
+        if (expiredSubs.length > 0) {
+            console.log(`[Scheduled Job] Marking ${expiredSubs.length} subscriptions as expired`);
+            // 2. Update Subscription statuses
+            yield models_1.Subscription.updateMany({ _id: { $in: expiredSubs.map(s => s._id) } }, { status: 'expired' });
+            // 3. Update Member statuses to 'inactive' if no other active subscription exists
+            for (const sub of expiredSubs) {
+                const otherActiveSub = yield models_1.Subscription.findOne({
+                    member: sub.member,
+                    status: 'active',
+                    endDate: { $gte: now }
+                });
+                if (!otherActiveSub) {
+                    yield models_1.Member.findByIdAndUpdate(sub.member, { status: 'inactive' });
+                    console.log(`[Scheduled Job] Member ${sub.member} status updated to inactive`);
+                }
+            }
+        }
+        return { count: expiredSubs.length, success: true };
+    }
+    catch (error) {
+        console.error('[Scheduled Job] Error in updateExpiredSubscriptions:', error);
+        return { count: 0, success: false };
+    }
+});
+exports.updateExpiredSubscriptions = updateExpiredSubscriptions;
+/**
  * Run all scheduled notification jobs
  * This can be called by a cron job or scheduler
  */
@@ -121,10 +157,13 @@ const runScheduledNotifications = () => __awaiter(void 0, void 0, void 0, functi
     console.log('[Scheduled Job] Starting scheduled notification run at', new Date().toISOString());
     // Send 3-day expiry notifications
     const result = yield (0, exports.sendExpiryNotifications)(3);
+    // Update statuses for subscriptions that already expired
+    const statusUpdateResult = yield (0, exports.updateExpiredSubscriptions)();
     console.log('[Scheduled Job] Notification run completed:', {
         notificationsSent: result.notificationsSent,
+        expiredCount: statusUpdateResult.count,
         errors: result.errors.length,
-        success: result.success
+        success: result.success && statusUpdateResult.success
     });
 });
 exports.runScheduledNotifications = runScheduledNotifications;

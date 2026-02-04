@@ -24,12 +24,13 @@ const helmet_1 = __importDefault(require("helmet"));
 const node_cron_1 = __importDefault(require("node-cron"));
 const routes_1 = __importDefault(require("./routes"));
 const scheduler_service_1 = require("./services/scheduler.service");
+const attendance_service_1 = require("./services/attendance.service");
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 // Setup Socket.IO
 exports.io = new socket_io_1.Server(server, {
     cors: {
-        origin: '*', // Configure this for your frontend
+        origin: "*", // Allow all origins for debugging
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         credentials: true
     }
@@ -38,7 +39,7 @@ exports.io = new socket_io_1.Server(server, {
 app.set('io', exports.io);
 // Middleware
 app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)({ origin: '*' })); // Allow all origins for Express
 app.use(express_1.default.json());
 // Routes
 app.use('/api', routes_1.default);
@@ -61,6 +62,17 @@ mongoose_1.default.connect(MONGODB_URI)
         yield (0, scheduler_service_1.runScheduledNotifications)();
     }));
     console.log('[CRON] Subscription expiry notification job scheduled for 9:00 AM daily');
+    // Auto Check-out job to run every 5 minutes
+    node_cron_1.default.schedule('*/5 * * * *', () => __awaiter(void 0, void 0, void 0, function* () {
+        console.log('[CRON] Running auto check-out job...');
+        const results = yield (0, attendance_service_1.autoCheckOut)();
+        if (results.length > 0) {
+            console.log(`[CRON] Auto checked out ${results.length} sessions.`);
+            // Optionally broadcast to socket if needed
+            exports.io.emit('attendance:autoCheckout', { count: results.length });
+        }
+    }));
+    console.log('[CRON] Auto check-out job scheduled for every 5 minutes');
 })
     .catch((err) => {
     console.error('MongoDB Connection Error:', err);

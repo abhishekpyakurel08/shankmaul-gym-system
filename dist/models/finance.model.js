@@ -52,6 +52,7 @@ const IncomeSchema = new mongoose_1.Schema({
     paymentMethod: { type: String, required: true },
     memberId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Member' },
     receivedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
+    status: { type: String, enum: ['completed', 'pending', 'failed'], default: 'completed' },
     date: { type: Date, default: Date.now }
 }, { timestamps: true });
 const ExpenseSchema = new mongoose_1.Schema({

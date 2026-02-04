@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.manualCheckIn = exports.checkInAtLocation = exports.getMyStats = exports.getTodayAttendance = exports.checkOut = exports.checkIn = exports.getQRToken = void 0;
+exports.getAttendanceHistory = exports.manualCheckIn = exports.checkInAtLocation = exports.getMyStats = exports.getTodayAttendance = exports.checkOut = exports.checkIn = exports.getQRToken = void 0;
 const qrToken_1 = require("../utils/qrToken");
 const attendance_service_1 = require("../services/attendance.service");
 const models_1 = require("../models");
@@ -84,14 +84,32 @@ const checkOut = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 exports.checkOut = checkOut;
 const getTodayAttendance = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const attendances = yield models_1.Attendance.find({
-            date: { $gte: startOfDay }
-        }).populate('member');
+        const { date } = req.query;
+        let startOfTargetDay = new Date();
+        if (date && typeof date === 'string' && date !== '[object Object]') {
+            const parsedDate = new Date(date);
+            if (!isNaN(parsedDate.getTime())) {
+                startOfTargetDay = parsedDate;
+            }
+        }
+        startOfTargetDay.setHours(0, 0, 0, 0);
+        const endOfTargetDay = new Date(startOfTargetDay);
+        endOfTargetDay.setHours(23, 59, 59, 999);
+        // RBAC: If member, only show their own attendance
+        const query = {
+            date: { $gte: startOfTargetDay, $lte: endOfTargetDay }
+        };
+        if (req.user.role === 'member' || req.user.role === 'trainer') {
+            const member = yield models_1.Member.findOne({ user: req.user.id });
+            if (member) {
+                query.member = member._id;
+            }
+        }
+        const attendances = yield models_1.Attendance.find(query).populate('member');
         res.json(attendances);
     }
     catch (error) {
+        console.error('[GET_TODAY_ATTENDANCE_ERROR]', error);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -115,10 +133,37 @@ const getMyStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         const recent = yield models_1.Attendance.find({ member: member._id })
             .sort({ date: -1 })
             .limit(5);
+        // Streak Logic
+        const allAttendances = yield models_1.Attendance.find({ member: member._id })
+            .sort({ date: -1 })
+            .select('date');
+        const uniqueDates = Array.from(new Set(allAttendances.map(a => a.date.toISOString().split('T')[0])));
+        let streak = 0;
+        if (uniqueDates.length > 0) {
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            let lastDate = uniqueDates[0];
+            // If the most recent attendance is today or yesterday, streak is alive
+            if (lastDate === today || lastDate === yesterday) {
+                streak = 1;
+                for (let i = 1; i < uniqueDates.length; i++) {
+                    const prevDate = new Date(lastDate);
+                    prevDate.setDate(prevDate.getDate() - 1);
+                    const prevDateStr = prevDate.toISOString().split('T')[0];
+                    if (uniqueDates[i] === prevDateStr) {
+                        streak++;
+                        lastDate = uniqueDates[i];
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+        }
         res.json({
             totalWorkouts,
             thisMonthWorkouts,
-            streak: 0, // Placeholder, streak logic is complex
+            streak,
             recent
         });
     }
@@ -154,16 +199,18 @@ const checkInAtLocation = (req, res) => __awaiter(void 0, void 0, void 0, functi
         });
     }
     catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error('[LOCATION_CHECKIN_ERROR]', error.message);
+        res.status(400).json({ message: error.message || 'Check-in failed' });
     }
 });
 exports.checkInAtLocation = checkInAtLocation;
 const manualCheckIn = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { memberId } = req.body;
+        const { memberId, allowOverride, customDate } = req.body;
         if (!memberId)
             return res.status(400).json({ message: 'Member ID required' });
-        const { attendance, type, subscription } = yield (0, attendance_service_1.processManualCheckIn)(memberId);
+        const dateObj = customDate ? new Date(customDate) : undefined;
+        const { attendance, type, subscription } = yield (0, attendance_service_1.processManualCheckIn)(memberId, allowOverride, dateObj);
         // Emit Socket Event
         const io = req.app.get('io');
         if (io) {
@@ -181,3 +228,24 @@ const manualCheckIn = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.manualCheckIn = manualCheckIn;
+const getAttendanceHistory = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const query = {};
+        // RBAC: If member/trainer, only show their own history
+        if (req.user.role === 'member' || req.user.role === 'trainer') {
+            const member = yield models_1.Member.findOne({ user: req.user.id });
+            if (!member)
+                return res.status(404).json({ message: 'Member profile not found' });
+            query.member = member._id;
+        }
+        const history = yield models_1.Attendance.find(query)
+            .populate('member')
+            .sort({ checkInTime: -1 });
+        res.json(history);
+    }
+    catch (error) {
+        console.error('[GET_HISTORY_ERROR]', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+exports.getAttendanceHistory = getAttendanceHistory;
